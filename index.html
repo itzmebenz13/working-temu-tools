@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temu ID Extractor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { --bg-color: #f5f5f5; --text-color: #0a0a0a; --text-muted-color: #525252; --card-bg-color: #ffffff; --card-border-color: rgba(0, 0, 0, 0.1); --primary-btn-bg-color: #0a0a0a; --primary-btn-text-color: #f5f5f5; }
+        .dark { --bg-color: #0a0a0a; --text-color: #f5f5f5; --text-muted-color: #a3a3a3; --card-bg-color: #1a1a1a; --card-border-color: rgba(255, 255, 255, 0.1); --primary-btn-bg-color: #f5f5f5; --primary-btn-text-color: #0a0a0a; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 2rem; }
+        .generator-card { background-color: var(--card-bg-color); border: 1px solid var(--card-border-color); border-radius: 1rem; padding: 2rem; width: 100%; max-width: 450px; }
+        .tool-input { width: 100%; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid var(--card-border-color); background-color: var(--bg-color); color: var(--text-color); font-size: 1rem; }
+        .generate-button { width: 100%; background-color: var(--primary-btn-bg-color); color: var(--primary-btn-text-color); padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.3s; }
+        .generate-button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .generate-button:hover:not(:disabled) { opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="generator-card">
+        <div class="text-center mb-6">
+            <h1 class="text-4xl font-black tracking-tighter">Temu Link Extractor</h1>
+            <p class="mt-2" style="color: var(--text-muted-color);">Paste a share link to get the Goods ID.</p>
+        </div>
+        <div class="flex flex-col gap-4">
+            <div>
+                <label for="temu-link" class="block text-sm font-medium mb-2 text-left">Enter Temu Share Link:</label>
+                <input type="url" id="temu-link" class="tool-input" placeholder="https://share.temu.com/...">
+            </div>
+            <button id="extractor-btn" class="generate-button">Get Goods ID</button>
+        </div>
+        <div id="output-container" class="mt-4 hidden">
+            <p class="text-sm font-medium text-left">Extracted Goods ID:</p>
+            <p id="result-id-output" class="text-xl font-bold mt-1 p-3 rounded-md break-all text-left" style="background-color: var(--bg-color);"></p>
+        </div>
+    </div>
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+        const extractorBtn = document.getElementById('extractor-btn');
+        const linkInput = document.getElementById('temu-link');
+        const outputContainer = document.getElementById('output-container');
+        const resultIdOutput = document.getElementById('result-id-output');
+        extractorBtn.addEventListener('click', async () => {
+            const shareLink = linkInput.value.trim();
+            if (!shareLink.includes('temu.com')) { return alert('Please enter a valid Temu share link.'); }
+            const apiEndpoint = '/api/get-id';
+            extractorBtn.textContent = 'Extracting...';
+            extractorBtn.disabled = true;
+            outputContainer.classList.add('hidden');
+            try {
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: shareLink })
+                });
+                const data = await response.json();
+                if (!data.success) { throw new Error(data.message); }
+                resultIdOutput.textContent = data.goods_id;
+                outputContainer.classList.remove('hidden');
+            } catch (error) {
+                alert(`Error: ${error.message || 'An unknown error occurred.'}`);
+            } finally {
+                extractorBtn.textContent = 'Get Goods ID';
+                extractorBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
