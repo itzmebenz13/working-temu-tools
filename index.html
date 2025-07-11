@@ -36,32 +36,59 @@
         </div>
     </div>
     <script>
+        // Set theme based on preference
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.classList.add('dark');
         }
+
         const extractorBtn = document.getElementById('extractor-btn');
         const linkInput = document.getElementById('temu-link');
         const outputContainer = document.getElementById('output-container');
         const resultIdOutput = document.getElementById('result-id-output');
+
         extractorBtn.addEventListener('click', async () => {
             const shareLink = linkInput.value.trim();
-            if (!shareLink.includes('temu.com')) { return alert('Please enter a valid Temu share link.'); }
-            const apiEndpoint = '/api/get-id';
+            if (!shareLink.includes('temu.com')) {
+                return alert('Please enter a valid Temu share link.');
+            }
+
+            // Using a public CORS proxy that follows redirects
+            const proxyUrl = 'https://corsproxy.io/?';
+            const targetUrl = encodeURIComponent(shareLink);
+            const apiEndpoint = proxyUrl + targetUrl;
+            
             extractorBtn.textContent = 'Extracting...';
             extractorBtn.disabled = true;
             outputContainer.classList.add('hidden');
+
             try {
-                const response = await fetch(apiEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: shareLink })
-                });
-                const data = await response.json();
-                if (!data.success) { throw new Error(data.message); }
-                resultIdOutput.textContent = data.goods_id;
+                // Fetch the URL through the proxy
+                const response = await fetch(apiEndpoint);
+
+                if (!response.ok) {
+                    throw new Error(`The proxy server responded with an error: ${response.status} ${response.statusText}`);
+                }
+
+                // The final URL after redirects is in the 'x-final-url' header provided by this proxy
+                const finalUrl = response.headers.get('x-final-url');
+
+                if (!finalUrl) {
+                    throw new Error('Could not determine the final URL. The proxy may be down or the link is invalid.');
+                }
+
+                const urlObject = new URL(finalUrl);
+                const goodsId = urlObject.searchParams.get('goods_id');
+
+                if (!goodsId) {
+                    throw new Error('Goods ID not found in the final redirected link.');
+                }
+
+                resultIdOutput.textContent = goodsId;
                 outputContainer.classList.remove('hidden');
+
             } catch (error) {
-                alert(`Error: ${error.message || 'An unknown error occurred.'}`);
+                console.error("Extraction failed:", error);
+                alert(`Error: ${error.message}`);
             } finally {
                 extractorBtn.textContent = 'Get Goods ID';
                 extractorBtn.disabled = false;
